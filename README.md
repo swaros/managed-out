@@ -28,3 +28,5 @@ func main() {
 
 }
 ```
+### output
+![example output](https://github.com/swaros/docu-asset-store/blob/main/demo-manout.png)
