@@ -44,6 +44,11 @@ type MOut struct {
 	parser      OutParser
 }
 
+func NewStdout() *MOut {
+	var m MOut
+	return m.Std()
+}
+
 // set stdout as writer
 func (m *MOut) Std() *MOut {
 	m.io = os.Stdout
