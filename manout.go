@@ -1,40 +1,96 @@
+/*MIT License
+
+Copyright (c) 2022 Thomas Ziegler, <thomas.zglr@googlemail.com>. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 package manout
 
 import (
 	"fmt"
 	"io"
 	"os"
+
+	"golang.org/x/term"
 )
 
+// list of writers accessible by the keyname
 var (
-	writers map[string]io.Writer = make(map[string]io.Writer)
+	writers map[string]io.ReadWriter = make(map[string]io.ReadWriter)
 )
 
+// interface for parsers
 type OutParser interface {
 	Message(i ...interface{}) string
+	Enable(mo *MOut) bool
 }
 
 type MOut struct {
-	io          io.Writer
+	io          io.ReadWriter
 	namedWriter string
 	parser      OutParser
+	isTerminal  bool
 }
 
+func NewStdout() *MOut {
+	var m MOut
+	return m.Std()
+}
+
+// NewStdColored creates an new stdout
+// with color support
+func NewStdColored() (*MOut, *Colored) {
+	var m MOut
+	var colored Colored
+	colored.Enable(&m)
+	return m.Std().SetParser(&colored), &colored
+}
+
+// set stdout as writer
 func (m *MOut) Std() *MOut {
 	m.io = os.Stdout
+	m.isTerminal = term.IsTerminal(int(os.Stdout.Fd()))
 	return m
 }
 
+// set stderr as writer
 func (m *MOut) Err() *MOut {
 	m.io = os.Stderr
 	return m
 }
 
+// sets the parser they is responsible for formatting
 func (m *MOut) SetParser(parser OutParser) *MOut {
 	m.parser = parser
+	parser.Enable(m)
 	return m
 }
 
+// GetParser returns the instance of the parser.
+// can be nil
+func (m *MOut) GetParser() *OutParser {
+	return &m.parser
+}
+
+// sets an named writer if exists.
+// or ignores if not.
+// writer have to be set with SetNamedWriter before.
 func (m *MOut) Named(key string) *MOut {
 	if io, exists := writers[key]; exists {
 		m.io = io
@@ -43,7 +99,9 @@ func (m *MOut) Named(key string) *MOut {
 	return m
 }
 
-func (m *MOut) SetNamedWriter(key string, io io.Writer) *MOut {
+// register or overidde a io.Writer by key-name.
+// also it will be set as the current writer
+func (m *MOut) SetNamedWriter(key string, io io.ReadWriter) *MOut {
 	if key == "" {
 		key = "default"
 	}
@@ -53,6 +111,7 @@ func (m *MOut) SetNamedWriter(key string, io io.Writer) *MOut {
 	return m
 }
 
+// ToString get the formated string, depending on the used formatter
 func (m *MOut) ToString(i ...interface{}) string {
 	if m.parser == nil {
 		var plain PlainParse
@@ -62,18 +121,22 @@ func (m *MOut) ToString(i ...interface{}) string {
 
 }
 
-func (m *MOut) Out(i ...interface{}) {
+// Out print the formatted content by using fmt.Fprint
+// have the same return values.
+func (m *MOut) Out(i ...interface{}) (n int, err error) {
 	out := m.ToString(i...)
 	if m.io == nil {
 		m.Std()
 	}
-	fmt.Fprint(m.io, out)
+	return fmt.Fprint(m.io, out)
 }
 
-func (m *MOut) OutLn(i ...interface{}) {
+// OutLn print the formatted content by using fmt.Fprintln
+// it have the same return values like fmt.Fprintln
+func (m *MOut) OutLn(i ...interface{}) (n int, err error) {
 	out := m.ToString(i...)
 	if m.io == nil {
 		m.Std()
 	}
-	fmt.Fprintln(m.io, out)
+	return fmt.Fprintln(m.io, out)
 }
