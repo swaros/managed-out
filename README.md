@@ -17,16 +17,42 @@ import (
 )
 
 func main() {
-	fmt.Println("Hello, World!")
+	mo, parser := manout.NewStdColored() // create a new managed and colored output handler instance
 
-	// plain output with colorcodes, what should not work
-	var mo manout.MOut
-	mo.OutLn("hello", manout.ForeCyan, " world", manout.ForeLightGreen, " you should see the colorcodes but no colors ")
-	// now with colored support
-	var coloredParser manout.Colored
-	mo.SetParser(&coloredParser).OutLn("hello", manout.ForeCyan, " world", manout.ForeLightGreen, " now it should work ")
+	// lets loop 2 times
+	for i := 0; i < 2; i++ {
+
+		// in the first loop, the output should be colored
+		// if not, then the stdout is not accepted as a terminal.
+		// this will for exampe happens in launch visual-studio-code jobs.
+		// event they are able to handle the colors.
+		// on any console you should see the first output colored. (bash, zsh, fish, powershell ...)
+		// you can also force color for the first itertion by uncomment the next 3 lines ...
+		//if i == 0 {
+		//	parser.EnableColor()
+		//}
+
+		mo.OutLn(
+			manout.BoldTag, manout.ForeMagenta,
+			"======================================\nhello world ",
+			manout.CleanTag, manout.ForeDarkGrey,
+			" ... you need more ",
+			manout.ForeLightGreen, manout.BackGreen,
+			" GREEN ",
+			manout.CleanTag,
+			"....",
+		)
+		mo.OutLn() // just some space
+
+		// markup used inline. without color, the markup is also removed
+		mo.OutLn(`.... using <b>markup</> <f:yellow>inline</> ... 
+     it is <f:red> NOT </> html. <b:green><f:white>just looks similiar</>`)
+
+		mo.OutLn() // just some space again
+		parser.DisableColor() // disbale color for the next loop
+	}
 
 }
 ```
 ### output
-![example output](https://github.com/swaros/docu-asset-store/blob/main/demo-manout.png)
+![example output](https://github.com/swaros/docu-asset-store/blob/main/manout-demo2.png)

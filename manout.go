@@ -26,22 +26,26 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"golang.org/x/term"
 )
 
 // list of writers accessible by the keyname
 var (
-	writers map[string]io.Writer = make(map[string]io.Writer)
+	writers map[string]io.ReadWriter = make(map[string]io.ReadWriter)
 )
 
 // interface for parsers
 type OutParser interface {
 	Message(i ...interface{}) string
+	Enable(mo *MOut) bool
 }
 
 type MOut struct {
-	io          io.Writer
+	io          io.ReadWriter
 	namedWriter string
 	parser      OutParser
+	isTerminal  bool
 }
 
 func NewStdout() *MOut {
@@ -49,9 +53,19 @@ func NewStdout() *MOut {
 	return m.Std()
 }
 
+// NewStdColored creates an new stdout
+// with color support
+func NewStdColored() (*MOut, *Colored) {
+	var m MOut
+	var colored Colored
+	colored.Enable(&m)
+	return m.Std().SetParser(&colored), &colored
+}
+
 // set stdout as writer
 func (m *MOut) Std() *MOut {
 	m.io = os.Stdout
+	m.isTerminal = term.IsTerminal(int(os.Stdout.Fd()))
 	return m
 }
 
@@ -64,7 +78,14 @@ func (m *MOut) Err() *MOut {
 // sets the parser they is responsible for formatting
 func (m *MOut) SetParser(parser OutParser) *MOut {
 	m.parser = parser
+	parser.Enable(m)
 	return m
+}
+
+// GetParser returns the instance of the parser.
+// can be nil
+func (m *MOut) GetParser() *OutParser {
+	return &m.parser
 }
 
 // sets an named writer if exists.
@@ -80,7 +101,7 @@ func (m *MOut) Named(key string) *MOut {
 
 // register or overidde a io.Writer by key-name.
 // also it will be set as the current writer
-func (m *MOut) SetNamedWriter(key string, io io.Writer) *MOut {
+func (m *MOut) SetNamedWriter(key string, io io.ReadWriter) *MOut {
 	if key == "" {
 		key = "default"
 	}
