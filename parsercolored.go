@@ -3,18 +3,28 @@ package manout
 import (
 	"fmt"
 	"strings"
+
+	"github.com/swaros/outinject"
 )
 
 type Colored struct {
 	enabled bool
 }
 
-func (c *Colored) Enable(mo *MOut) bool {
-	c.enabled = mo.isTerminal
+var ColParser Colored
+
+func NewColoredOut() (*outinject.MOut, *Colored) {
+	mo := outinject.NewStdout()
+	mo.SetParser(&ColParser)
+	return mo, &ColParser
+}
+
+func (c *Colored) Enable(mo *outinject.MOut) bool {
+	c.enabled = mo.IsTerminal
 	return c.enabled
 }
 
-func (c *Colored) Message(i ...interface{}) string {
+func (c *Colored) Parse(i ...interface{}) string {
 	stringResult := fmt.Sprint(i...)
 	needToDo := strings.Contains(stringResult, "<")
 	if needToDo {

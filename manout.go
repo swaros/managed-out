@@ -20,123 +20,72 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+// manout package wraps a couple of most used fmt functions.
+// the mapping is not nessesary to get colored output. it makes
+// the usage just a little bit easier.
+// as an example:
+//     mo, parser := manout.NewColoredOut()
+//     manout.Om.SetOM(mo)
+//
+//     manout.Om.Println("peter", manout.ForeLightGreen, "jackson")
+//     manout.Om.Fprintf(os.Stdout, "Hello <f:white>%s</> \n", "samurai")
+//
 package manout
 
 import (
 	"fmt"
 	"io"
-	"os"
 
-	"golang.org/x/term"
+	"github.com/swaros/outinject"
 )
 
 // list of writers accessible by the keyname
-var (
-	writers map[string]io.ReadWriter = make(map[string]io.ReadWriter)
-)
-
-// interface for parsers
-type OutParser interface {
-	Message(i ...interface{}) string
-	Enable(mo *MOut) bool
+type OutWrapper struct {
+	mo outinject.OutputManager
 }
 
-type MOut struct {
-	io          io.ReadWriter
-	namedWriter string
-	parser      OutParser
-	isTerminal  bool
+var Om *OutWrapper = &OutWrapper{mo: outinject.NewStdout()}
+
+func (Ow *OutWrapper) Print(a ...interface{}) (n int, err error) {
+	return fmt.Print(Ow.mo.ToString(a...))
 }
 
-func NewStdout() *MOut {
-	var m MOut
-	return m.Std()
+func (Ow *OutWrapper) Println(a ...interface{}) (n int, err error) {
+	return fmt.Println(Ow.mo.ToString(a...))
 }
 
-// NewStdColored creates an new stdout
-// with color support
-func NewStdColored() (*MOut, *Colored) {
-	var m MOut
-	var colored Colored
-	colored.Enable(&m)
-	return m.Std().SetParser(&colored), &colored
+// Printf maps the fmt.Printf func
+func (Ow *OutWrapper) Printf(format string, a ...interface{}) (n int, err error) {
+	return fmt.Printf(Ow.pString(format), Ow.parseInterfaces(a...)...)
 }
 
-// set stdout as writer
-func (m *MOut) Std() *MOut {
-	m.io = os.Stdout
-	m.isTerminal = term.IsTerminal(int(os.Stdout.Fd()))
-	return m
+func (Ow *OutWrapper) Fprintf(w io.Writer, format string, a ...interface{}) (n int, err error) {
+	return fmt.Fprintf(w, Ow.pString(format), Ow.parseInterfaces(a...)...)
 }
 
-// set stderr as writer
-func (m *MOut) Err() *MOut {
-	m.io = os.Stderr
-	return m
+func (Ow *OutWrapper) SetOM(mo outinject.OutputManager) {
+	Ow.mo = mo
 }
 
-// sets the parser they is responsible for formatting
-func (m *MOut) SetParser(parser OutParser) *MOut {
-	m.parser = parser
-	parser.Enable(m)
-	return m
+func (Ow *OutWrapper) pString(s string) string {
+	prs := *Ow.mo.GetParser()
+	return prs.Parse(s)
 }
 
-// GetParser returns the instance of the parser.
-// can be nil
-func (m *MOut) GetParser() *OutParser {
-	return &m.parser
-}
+func (Ow *OutWrapper) parseInterfaces(a ...interface{}) []interface{} {
+	var b []interface{}
+	prs := *Ow.mo.GetParser()
+	for _, v := range a {
+		switch v.(type) {
+		case string:
+			n := prs.Parse(v)
+			b = append(b, n)
 
-// sets an named writer if exists.
-// or ignores if not.
-// writer have to be set with SetNamedWriter before.
-func (m *MOut) Named(key string) *MOut {
-	if io, exists := writers[key]; exists {
-		m.io = io
-		m.namedWriter = key
+		default:
+			b = append(b, v)
+		}
+
 	}
-	return m
-}
-
-// register or overidde a io.Writer by key-name.
-// also it will be set as the current writer
-func (m *MOut) SetNamedWriter(key string, io io.ReadWriter) *MOut {
-	if key == "" {
-		key = "default"
-	}
-	writers[key] = io
-	m.namedWriter = key
-	m.io = io
-	return m
-}
-
-// ToString get the formated string, depending on the used formatter
-func (m *MOut) ToString(i ...interface{}) string {
-	if m.parser == nil {
-		var plain PlainParse
-		m.parser = plain
-	}
-	return m.parser.Message(i...)
-
-}
-
-// Out print the formatted content by using fmt.Fprint
-// have the same return values.
-func (m *MOut) Out(i ...interface{}) (n int, err error) {
-	out := m.ToString(i...)
-	if m.io == nil {
-		m.Std()
-	}
-	return fmt.Fprint(m.io, out)
-}
-
-// OutLn print the formatted content by using fmt.Fprintln
-// it have the same return values like fmt.Fprintln
-func (m *MOut) OutLn(i ...interface{}) (n int, err error) {
-	out := m.ToString(i...)
-	if m.io == nil {
-		m.Std()
-	}
-	return fmt.Fprintln(m.io, out)
+	return b
 }
