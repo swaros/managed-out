@@ -22,11 +22,12 @@ func main() {
 	// lets loop 2 times
 	for i := 0; i < 2; i++ {
 
-		// in the first loop, the output should be colored
+		// in the first loop, the output should be colored.
 		// if not, then the stdout is not accepted as a terminal.
 		// this will for exampe happens in launch visual-studio-code jobs.
-		// event they are able to handle the colors.
-		// on any console you should see the first output colored. (bash, zsh, fish, powershell ...)
+		// even they are able to handle the colors.
+		// on any console you should see the first output colored. 
+		// (bash, zsh, fish, powershell >= v7)
 		// you can also force color for the first itertion by uncomment the next 3 lines ...
 		//if i == 0 {
 		//	parser.EnableColor()
@@ -49,7 +50,7 @@ func main() {
      it is <f:red> NOT </> html. <b:green><f:white>just looks similiar</>`)
 
 		mo.OutLn() // just some space again
-		parser.DisableColor() // disbale color for the next loop
+		parser.DisableColor() // disable color for the next loop
 	}
 
 }
