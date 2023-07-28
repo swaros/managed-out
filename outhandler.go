@@ -35,6 +35,8 @@ const (
 	resetCode = "\033[0m"
 	// CleanTag is the tag to reset to default
 	CleanTag = "</>"
+	// ForeBlack black foreground color
+	ForeBlack = "<f:black>"
 	// ForeRed red foreground color
 	ForeRed = "<f:red>"
 	// ForeGreen red foreground color
@@ -122,6 +124,7 @@ const (
 )
 
 var tagMap = map[string]string{
+	ForeBlack:        "30",
 	ForeRed:          "31",
 	ForeGreen:        "32",
 	ForeYellow:       "33",
